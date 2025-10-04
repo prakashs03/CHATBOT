@@ -9,7 +9,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ✅ App layout
 st.set_page_config(page_title="Gemini HealthBot", page_icon="🩺", layout="wide")
-st.markdown("<h2 style='text-align:center;color:#007BFF;'>🤖 Gemini Healthcare Chatbot</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align:center;color:#007BFF;'>🤖 Healthcare Chatbot</h2>", unsafe_allow_html=True)
 st.write("Chat in **English** or **தமிழ்** about health, symptoms, and wellness 💬")
 
 # ✅ Detect Tamil / English automatically
@@ -36,7 +36,7 @@ def healthcare_chatbot(query_text):
 
 # ✅ Streamlit Input UI
 user_query = st.text_input("💬 Ask your health-related question:")
-if st.button("Ask Gemini 🧠"):
+if st.button("Ask 🧠"):
     if user_query.strip():
         with st.spinner("Thinking... 🤔"):
             try:
@@ -46,3 +46,4 @@ if st.button("Ask Gemini 🧠"):
                 st.error(f"⚠️ Error: {str(e)}")
     else:
         st.warning("Please enter a question to ask Gemini.")
+
