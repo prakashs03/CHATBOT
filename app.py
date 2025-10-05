@@ -1,91 +1,48 @@
-# ================================================================
-#  HEALTHCARE CHATBOT API  (Tamil + English)
-# ================================================================
-# Requirements:
-# pip install fastapi uvicorn google-generativeai deep-translator
-
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
-from deep_translator import GoogleTranslator
+import streamlit as st
 import google.generativeai as genai
+from deep_translator import GoogleTranslator
 import re
+import os
 
-# ================================================================
-#  API CONFIGURATION
-# ================================================================
-app = FastAPI(
-    title="Gemini Healthcare Chatbot API",
-    description="A multilingual healthcare chatbot using with Tamil + English support",
-    version="2.0"
-)
+# Configure Gemini API
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Allow Streamlit or browser access (CORS)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Page design
+st.set_page_config(page_title="Gemini HealthBot", page_icon="🩺", layout="wide")
+st.markdown("<h2 style='text-align:center;color:#007BFF;'>🤖 Gemini Healthcare Chatbot</h2>", unsafe_allow_html=True)
+st.write("Chat in **English** or **தமிழ்** about health, symptoms, and wellness 💬")
 
-# ================================================================
-#  GEMINI MODEL CONFIG
-# ================================================================
-# Replace YOUR_API_KEY with your Gemini API key
-genai.configure(api_key="AIzaSyCs-iW346inNJ0Pmc-PidcM2L4NOH9C7o4")
+def healthcare_chatbot(query_text):
+    # Detect Tamil text
+    is_tamil = bool(re.search(r'[\u0B80-\u0BFF]', query_text))
 
-MODEL_NAME = "models/gemini-2.5-pro"
+    # Translate Tamil → English
+    if is_tamil:
+        query_en = GoogleTranslator(source='ta', target='en').translate(query_text)
+    else:
+        query_en = query_text
 
-# ================================================================
-#  CHATBOT FUNCTION
-# ================================================================
-def healthcare_chatbot(query_text: str):
-    """Process Tamil or English question and return Gemini answer."""
-    try:
-        # Detect Tamil text
-        is_tamil = bool(re.search(r'[\u0B80-\u0BFF]', query_text))
+    # Get Gemini answer
+    model = genai.GenerativeModel("models/gemini-2.5-pro")
+    response = model.generate_content(query_en)
+    answer_en = response.text
 
-        # Translate to English if Tamil
-        if is_tamil:
-            query_en = GoogleTranslator(source="ta", target="en").translate(query_text)
-        else:
-            query_en = query_text
+    # Translate back if needed
+    if is_tamil:
+        answer_ta = GoogleTranslator(source='en', target='ta').translate(answer_en)
+        return f"**தமிழ் பதில்:** {answer_ta}"
+    else:
+        return f"**Answer:** {answer_en}"
 
-        # Create Gemini model
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(
-            f"Provide a concise, factual medical answer for this health-related question: {query_en}. "
-            f"Do not include unnecessary conversation or examples."
-        )
-
-        # Extract Gemini answer
-        answer_en = response.text.strip()
-
-        # If Tamil input, translate back to Tamil
-        if is_tamil:
-            answer_ta = GoogleTranslator(source="en", target="ta").translate(answer_en)
-            return {"language": "tamil", "answer": answer_ta}
-        else:
-            return {"language": "english", "answer": answer_en}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-# ================================================================
-#  FASTAPI ENDPOINTS
-# ================================================================
-@app.get("/")
-def root():
-    return {"message": "✅ Gemini Healthcare Chatbot API is running!"}
-
-@app.get("/ask")
-def ask_health_query(q: str = Query(..., description="Health-related question in Tamil or English")):
-    """Main endpoint to handle chatbot queries"""
-    result = healthcare_chatbot(q)
-    return result
-
-# ================================================================
-#  RUN COMMAND
-# ================================================================
-# Use:  python -m uvicorn app:app --reload --port 8000
-# ================================================================
+# Streamlit UI
+user_query = st.text_input("💬 Ask your health-related question:")
+if st.button("Ask Gemini 🧠"):
+    if user_query.strip():
+        with st.spinner("Thinking... 🤔"):
+            try:
+                reply = healthcare_chatbot(user_query)
+                st.markdown(reply)
+            except Exception as e:
+                st.error(f"⚠️ Error: {str(e)}")
+    else:
+        st.warning("Please enter a question to ask Gemini.")
